@@ -1,0 +1,42 @@
+from mrjob.job import MRJob
+from mrjob.step import MRStep
+import csv
+cols = 'iso_code,continent,location,date,total_cases,new_cases,total_deaths,new_deaths'.split(
+    ',')
+
+class Most_Cases_by_date(MRJob):
+    def mapper(self, _, line):
+        # Convert each line into a dictionary
+        row = dict(zip(cols, [a.strip()
+                              for a in csv.reader([line]).__next__()]))
+
+        #select row date, row new_deaths and row location
+        #Output date and location as key & new cases as values
+        if row['date'] and row['new_deaths'] and row['location']:
+            #take date and location as key and new cases as value
+            yield (row['date'], row['location']), int(row['new_cases'])
+
+    #count the max cases in each location and display their date
+    #send it to the same reducer
+    #pair the values and key as one
+    def reducer_cases(self, key, values):
+        yield None, (max(values), key)
+
+    #output the maximum cases and the following pairs
+    #yield only one result
+    def reducer_max_death(self, _, pairs):
+        try:
+            yield max(pairs)
+        except ValueError:
+            pass
+
+    def steps(self):
+        return [
+            MRStep(mapper=self.mapper,
+                    reducer=self.reducer_cases),
+            MRStep(reducer=self.reducer_max_death)
+            ]
+
+if __name__ == '__main__':
+    Most_Cases_by_date.run()
+

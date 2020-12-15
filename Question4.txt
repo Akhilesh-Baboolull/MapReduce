@@ -1,0 +1,61 @@
+from mrjob.job import MRJob
+from mrjob.step import MRStep
+import csv
+cols = 'iso_code,continent,location,date,total_cases,new_cases,total_deaths,new_deaths'.split(
+
+    ',')
+
+class Most_Case_by_Top_Ten(MRJob):
+    def mapper(self, _, line):
+        # Convert each line into a dictionary
+        row = dict(zip(cols, [a.strip()
+                              for a in csv.reader([line]).__next__()]))
+
+        #select row greater by 01/08/2020(last 2 month) and take the required date and location based on date
+        if row['date'] > "01\\08\\2020" and (row['new_cases'] and row['location']):
+            # take date and location as key and new cases as value
+            yield row['location'], int(row['new_cases'])
+
+    #combine the key and max(value)
+    def combine(self, key, values):
+        yield (key, max(values))
+
+    #yield the max values of cases and their key
+    #pair to the same reducer
+    def reducer_cases(self, key, values):
+        yield None, (int(max(values)), key)
+
+
+    def reducer_top_ten(self,_, values):
+        #create an empty list
+        self.alist = []
+        #append max values in alist
+        for value in values:
+            self.alist.append(value)
+
+        #create a second empty list to take top ten
+        self.blist = []
+        for i in range(10):
+        #append top ten in blist
+            self.blist.append(max(self.alist))
+            self.alist.remove(max(self.alist))
+        for i in range(10):
+            yield self.blist[i]
+
+    def steps(self):
+
+        return [
+
+            MRStep(mapper=self.mapper,
+
+                   combiner=self.combine,
+
+                   reducer=self.reducer_cases),
+
+            MRStep(reducer=self.reducer_top_ten)
+
+        ]
+
+
+if __name__ == '__main__':
+    Most_Case_by_Top_Ten.run()

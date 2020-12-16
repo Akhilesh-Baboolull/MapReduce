@@ -10,17 +10,17 @@ class TopChemicals(MRJob):
        
            yield row['product'], int(row['reports'])
 
-   def reducer_count_reports(self, location, new_cases):
+   def reducer_count_reports(self, product, reports):
            # send all (num_occurrences, word) pairs to the same reducer.
            # num_occurrences is so we can easily use Python's max() function.
        yield None, (int(max(reports)), product)
 
-   def secondreducer(self,key,max_cases):
+   def secondreducer(self,key,max_reports):
        self.max_list = []
-       for value in max_cases:
+       for value in max_reports:
            self.max_list.append(value)
 
-       for index in range(10):
+       for index in range(5):
            yield max(self.max_list)
            self.max_list.remove(max(self.max_list))
 
